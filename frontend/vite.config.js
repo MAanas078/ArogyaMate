@@ -6,6 +6,6 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: process.env.PORT || 5173,
-    allowedHosts: ['https://arogyamate-frontend.onrender.com'] // optional if you face host block
+    allowedHosts: ['arogyamate-frontend.onrender.com'] // optional if you face host block
   }
 })

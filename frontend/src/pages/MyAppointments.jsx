@@ -21,20 +21,20 @@ const MyAppointments = () => {
 
   const getUserAppointments = async () => {
     try {
-      const { data } = await axios.get(backendUrl + '/api/user/appointments', {
+      const { data } = await axios.get(`${backendUrl}/api/user/appointments`, {
         headers: { token }
       })
       setAppointments(data.appointments.reverse())
     } catch (error) {
-      console.log(error)
-      toast.error(error.message)
+      console.error('Failed to fetch appointments:', error)
+      toast.error(error.response?.data?.message || "Error fetching appointments")
     }
   }
 
   const cancelAppointment = async (appointmentId) => {
     try {
       const { data } = await axios.post(
-        backendUrl + '/api/user/cancel-appointment',
+        `${backendUrl}/api/user/cancel-appointment`,
         { appointmentId },
         { headers: { token } }
       )
@@ -46,8 +46,8 @@ const MyAppointments = () => {
         toast.error(data.message)
       }
     } catch (error) {
-      console.log(error)
-      toast.error(error.message)
+      console.error('Cancel appointment error:', error)
+      toast.error(error.response?.data?.message || "Cancel failed")
     }
   }
 
@@ -63,57 +63,71 @@ const MyAppointments = () => {
       handler: async (response) => {
         try {
           const { data } = await axios.post(
-            backendUrl + "/api/user/verifyRazorpay",
+            `${backendUrl}/api/user/verifyRazorpay`,
             response,
             { headers: { token } }
           )
           if (data.success) {
+            toast.success("Payment verified")
             navigate('/my-appointments')
             getUserAppointments()
+          } else {
+            toast.error("Verification failed")
           }
         } catch (error) {
-          console.log(error)
-          toast.error(error.message)
+          console.error('Verify Razorpay Error:', error)
+          toast.error(error.response?.data?.message || "Verification failed")
         }
       }
     }
+
     const rzp = new window.Razorpay(options)
     rzp.open()
   }
 
   const appointmentRazorpay = async (appointmentId) => {
+    if (!appointmentId) {
+      toast.error("Invalid appointment ID for Razorpay")
+      return
+    }
+
     try {
       const { data } = await axios.post(
-        backendUrl + '/api/user/payment-razorpay',
+        `${backendUrl}/api/user/payment-razorpay`,
         { appointmentId },
         { headers: { token } }
       )
-      if (data.success) {
+      if (data.success && data.order) {
         initPay(data.order)
       } else {
-        toast.error(data.message)
+        toast.error(data.message || "Payment initiation failed")
       }
     } catch (error) {
-      console.log(error)
-      toast.error(error.message)
+      console.error('Razorpay Init Error:', error)
+      toast.error(error.response?.data?.message || "Razorpay Error (404?)")
     }
   }
 
   const appointmentStripe = async (appointmentId) => {
+    if (!appointmentId) {
+      toast.error("Invalid appointment ID for Stripe")
+      return
+    }
+
     try {
       const { data } = await axios.post(
-        backendUrl + '/api/user/payment-stripe',
+        `${backendUrl}/api/user/payment-stripe`,
         { appointmentId },
         { headers: { token } }
       )
-      if (data.success) {
+      if (data.success && data.session_url) {
         window.location.replace(data.session_url)
       } else {
-        toast.error(data.message)
+        toast.error(data.message || "Stripe session creation failed")
       }
     } catch (error) {
-      console.log(error)
-      toast.error(error.message)
+      console.error('Stripe Payment Error:', error)
+      toast.error(error.response?.data?.message || "Stripe Error")
     }
   }
 
@@ -126,15 +140,14 @@ const MyAppointments = () => {
   return (
     <div>
       <p className='pb-3 mt-12 text-lg font-medium text-gray-600 border-b'>My appointments</p>
-      {/* Optional debug */}
-      {/* <p className='text-xs text-red-500'>Current selected payment ID: {payment}</p> */}
+
       <div className=''>
         {appointments.map((item, index) => {
           const itemId = String(item._id)
           return (
             <div key={index} className='grid grid-cols-[1fr_2fr] gap-4 sm:flex sm:gap-6 py-4 border-b'>
               <div>
-                <img className='w-36 bg-[#EAEFFF]' src={item.docData.image} alt="" />
+                <img className='w-36 bg-[#EAEFFF]' src={item.docData.image} alt="Doctor" />
               </div>
               <div className='flex-1 text-sm text-[#5E5E5E]'>
                 <p className='text-[#262626] text-base font-semibold'>{item.docData.name}</p>
@@ -146,7 +159,7 @@ const MyAppointments = () => {
                   <span className='text-sm text-[#3C3C3C] font-medium'>Date & Time:</span> {slotDateFormat(item.slotDate)} | {item.slotTime}
                 </p>
               </div>
-              <div></div>
+
               <div className='flex flex-col gap-2 justify-end text-sm text-center'>
                 {!item.cancelled && !item.payment && !item.isCompleted && (
                   <>
